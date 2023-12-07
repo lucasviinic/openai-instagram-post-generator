@@ -56,19 +56,66 @@ def openai_whisper_transcribe(audio_path: str, file_name: str, whisper_model: st
 
     return trancription
 
+def openai_gpt_hashtag_creator(instagram_summary: str, file_name: str, client: OpenAI) -> str:
+    print("Gerando as hashtags com a OpenAI...")
+
+    system_prompt = """
+    Assuma que você é um digital influencer digital e que está construíndo conteúdos das áreas de tecnologia em uma plataforma de áudio (podcast).
+
+    Os textos produzidos devem levar em consideração uma peresona que consumirá os conteúdos gerados. Leve em consideração:
+
+    - Seus seguidores são pessoas super conectadas da área de tecnologia, que amam consumir conteúdos relacionados aos principais temas da área de computação.
+    - Você deve utilizar o gênero neutro na construção do seu texto
+    - Os textos serão utilizados para convidar pessoas do instagram para consumirem seu conteúdo de áudio
+    - O texto deve ser escrito em português do Brasil.
+    - A saída deve conter 5 hashtags.
+
+    """
+
+    user_prompt =f'Aqui está um resumo de um texto "{instagram_summary}". Por favor, gere 5 hashtags que sejam relevantes para este texto e que possam ser publicadas no Instagram.  Por favor, faça isso em português do Brasil'
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        temperature=0.6
+    )
+
+    hashtags = response.choices[0].message.content
+
+    with open(f"hashtags_{file_name}.txt", "w", encoding="utf-8") as text_file:
+        text_file.write(hashtags)
+
+
+def read_file_tool(file_name: str):
+    try:
+        with open(file_name, "r") as file:
+            return file.read()
+    except IOError as e:
+        print(f"Erro no carregamento do arquivo: {e}")
+
 def main():
     load_dotenv()
 
     client = OpenAI()
     client.api_key = os.getenv("OPENAI_API_KEY")
 
-    audio_path = "podcasts/como_seria_uma_civilização_extraterrestre_a_escala_de_kardashev.mp3"
-    file_name = "hipsters_154_testes"
+    audio_path = "podcasts/a_escala_de_kardashev.mp3"
+    file_name = "a_escala_de_kardashev"
 
     whisper_model = "whisper-1"
-    completed_transcription = openai_whisper_transcribe(audio_path, file_name, whisper_model, client)
+    completed_transcription = read_file_tool("completed_text_escala_de_kardashev.txt")
+    instagram_summary = read_file_tool("instagram_summary_escala_de_kardashev.txt")
 
-    instagram_summary = openai_gpt_text_summarizer(completed_transcription, file_name, client)
+    hashtags = openai_gpt_hashtag_creator(instagram_summary, file_name, client)
 
 if __name__ == '__main__':
     main()
