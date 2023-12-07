@@ -94,6 +94,39 @@ def openai_gpt_hashtag_creator(instagram_summary: str, file_name: str, client: O
     with open(f"hashtags_{file_name}.txt", "w", encoding="utf-8") as text_file:
         text_file.write(hashtags)
 
+    return hashtags
+
+def openai_gpt_image_text_generator(instagram_summary: str, file_name: str, client: OpenAI):
+    print("Gerando a saída de texto para criacao de imagens com GPT...")
+
+    system_prompt = """
+    - A saída deve ser uma única, do tamanho de um tweet, que seja capaz de descrever o conteúdo do texto para que possa ser transcrito como uma imagem.
+    - Não inclua hashtags
+    """
+
+    user_prompt =  f'Reescreva o texto a seguir, em uma frase, para que descrever o texto abaixo em um tweet: {instagram_summary}'
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        temperature=0.6
+    )
+
+    text_to_image = response.choices[0].message.content
+
+    with open(f"text_to_image_generation_{file_name}.txt", "w", encoding="utf-8") as text_file:
+        text_file.write(text_to_image)
+
+    return text_to_image
 
 def read_file_tool(file_name: str):
     try:
@@ -112,10 +145,12 @@ def main():
     file_name = "a_escala_de_kardashev"
 
     whisper_model = "whisper-1"
-    completed_transcription = read_file_tool("completed_text_escala_de_kardashev.txt")
-    instagram_summary = read_file_tool("instagram_summary_escala_de_kardashev.txt")
 
-    hashtags = openai_gpt_hashtag_creator(instagram_summary, file_name, client)
+    completed_transcription = read_file_tool("completed_text_a_escala_de_kardashev.txt")
+    instagram_summary = read_file_tool("instagram_summary_a_escala_de_kardashev.txt")
+    hashtags = read_file_tool("hashtags_a_escala_de_kardashev.txt")
+
+    instagram_image_summary = openai_gpt_image_text_generator(instagram_summary, file_name, client)
 
 if __name__ == '__main__':
     main()
