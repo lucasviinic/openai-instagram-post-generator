@@ -1,6 +1,6 @@
 ## OpenAI Instagram Post Generator
 
-
+This project explores audio transcription using OpenAI's Whisper API, followed by the generation of social media content, including summaries and hashtags, through prompts for GPT. Additionally, it leverages the DALL-e API to create images based on the transcribed text and employs Instabot to structure and facilitate direct posting on Instagram.
 
 ### Topics covered in the project
 
