@@ -1,6 +1,7 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+import requests
 
 
 def openai_gpt_text_summarizer(completed_transcription: str, file_name: str, client: OpenAI) -> str:
@@ -128,12 +129,42 @@ def openai_gpt_image_text_generator(instagram_summary: str, file_name: str, clie
 
     return text_to_image
 
+def openai_dalle_image_denerator(resolution: str, image_summary: str, file_name: str, client: OpenAI, qtt_images = 1):
+    print("Criando uma imagem utilizando a API do DALL-E...")
+
+    user_prompt = f"Uma pintura ultra futurista, textless, 3d que retrate: {image_summary}"
+
+    response = client.images.generate(
+        prompt=user_prompt,
+        n=qtt_images,
+        size=resolution
+    )
+
+    return response.data
+
 def read_file_tool(file_name: str):
     try:
         with open(file_name, "r") as file:
             return file.read()
     except IOError as e:
         print(f"Erro no carregamento do arquivo: {e}")
+
+def image_downloader_tool(file_name: str, generated_image: str, qtt_images = 1):
+  image_names_list = []
+  try:
+    for image_counter in range(0, qtt_images):
+        path = generated_image[image_counter].url
+        image = requests.get(path)
+
+        with open(f"{file_name}_{image_counter}.png", "wb") as image_file:
+            image_file.write(image.content)
+
+        image_names_list.append(f"{file_name}_{image_counter}.png")
+    return image_names_list
+  except:
+    print("Ocorreu um erro!")
+    return  None
+
 
 def main():
     load_dotenv()
@@ -143,14 +174,18 @@ def main():
 
     audio_path = "podcasts/a_escala_de_kardashev.mp3"
     file_name = "a_escala_de_kardashev"
+    resolution = "1024x1024"
+    qtt_images = 4
 
     whisper_model = "whisper-1"
 
     completed_transcription = read_file_tool("completed_text_a_escala_de_kardashev.txt")
     instagram_summary = read_file_tool("instagram_summary_a_escala_de_kardashev.txt")
     hashtags = read_file_tool("hashtags_a_escala_de_kardashev.txt")
+    instagram_image_summary = read_file_tool("text_to_image_generation_a_escala_de_kardashev.txt")
 
-    instagram_image_summary = openai_gpt_image_text_generator(instagram_summary, file_name, client)
+    generated_image = openai_dalle_image_denerator(resolution, instagram_image_summary, file_name, client, qtt_images)
+    image_downloader_tool(file_name, generated_image, qtt_images)
 
 if __name__ == '__main__':
     main()
