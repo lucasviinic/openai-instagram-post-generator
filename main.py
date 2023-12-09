@@ -2,6 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import requests
+from pydub import AudioSegment
 
 
 def openai_gpt_text_summarizer(completed_transcription: str, file_name: str, client: OpenAI) -> str:
@@ -165,6 +166,47 @@ def image_downloader_tool(file_name: str, generated_image: str, qtt_images = 1):
     print("Ocorreu um erro!")
     return  None
 
+def piecewise_audio_transcribe_tool(podcast_file_path: str, file_name: str) -> list:
+    print("Iniciando corte...")
+    audio = AudioSegment.from_mp3(podcast_file_path)
+
+    ten_minutes = 10 * 60 * 1000
+
+    piece_counter = 1
+    exported_files = []
+
+    while len(audio) > 0:
+        piece = audio[:ten_minutes]
+        audio_piece_name = f"{file_name}_piece_{piece_counter}.mp3"
+        piece.export(audio_piece_name, format="mp3", codec="libmp3lame")
+        exported_files.append(audio_piece_name)
+        audio = audio[ten_minutes:]
+        piece_counter += 1
+
+    return exported_files
+
+def piecewise_openai_whisper_transcribe(audio_path: str, file_name: str, whisper_model: str, openai_client: OpenAI) -> str:
+    print(f"Transcrevendo com o whispers...")
+
+    audio_file_list = piecewise_audio_transcribe_tool(audio_path, file_name)
+    audio_piece_list = []
+
+    for audio_piece in audio_file_list:
+        audio = open(audio_piece, "rb")
+        response = openai_client.audio.transcriptions.create(
+            model=whisper_model,
+            file=audio
+        )
+        
+        transcription = response.text
+        audio_piece_list.append(transcription)
+
+    transcription = "".join(audio_piece_list)
+
+    with open(f"completed_text_{file_name}.txt", "w", encoding="utf-8") as text_file:
+        text_file.write(transcription)
+
+    return transcription
 
 def main():
     load_dotenv()
@@ -172,20 +214,22 @@ def main():
     client = OpenAI()
     client.api_key = os.getenv("OPENAI_API_KEY")
 
-    audio_path = "podcasts/a_escala_de_kardashev.mp3"
-    file_name = "a_escala_de_kardashev"
+    audio_path = "podcasts/4.5_billion_years_in_1_hour.mp3"
+    file_name = "4.5_billion_years_in_1_hour"
     resolution = "1024x1024"
     qtt_images = 4
 
     whisper_model = "whisper-1"
 
-    completed_transcription = read_file_tool("completed_text_a_escala_de_kardashev.txt")
-    instagram_summary = read_file_tool("instagram_summary_a_escala_de_kardashev.txt")
-    hashtags = read_file_tool("hashtags_a_escala_de_kardashev.txt")
-    instagram_image_summary = read_file_tool("text_to_image_generation_a_escala_de_kardashev.txt")
+    completed_transcription = piecewise_openai_whisper_transcribe(audio_path, file_name, whisper_model, client)
 
-    generated_image = openai_dalle_image_denerator(resolution, instagram_image_summary, file_name, client, qtt_images)
-    image_downloader_tool(file_name, generated_image, qtt_images)
+    # completed_transcription = read_file_tool("completed_text_a_escala_de_kardashev.txt")
+    # instagram_summary = read_file_tool("instagram_summary_a_escala_de_kardashev.txt")
+    # hashtags = read_file_tool("hashtags_a_escala_de_kardashev.txt")
+    # instagram_image_summary = read_file_tool("text_to_image_generation_a_escala_de_kardashev.txt")
+
+    # generated_image = openai_dalle_image_denerator(resolution, instagram_image_summary, file_name, client, qtt_images)
+    # image_downloader_tool(file_name, generated_image, qtt_images)
 
 if __name__ == '__main__':
     main()
